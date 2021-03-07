@@ -9,12 +9,12 @@ namespace LogToScreen.Web.Services
     public class LogService : ILogService
     {
         private readonly ILogFilesWatcher _logFilesWatcher;
-        private readonly IHubContext<LogHub> _logContext;
+        private readonly ILogHubWrapper _logwrapper;
 
-        public LogService(ILogFilesWatcher logFilesWatcher, IHubContext<LogHub> logContext)
+        public LogService(ILogFilesWatcher logFilesWatcher, ILogHubWrapper logwrapper)
         {
             _logFilesWatcher = logFilesWatcher ?? throw new ArgumentNullException(nameof(logFilesWatcher));
-            _logContext = logContext ?? throw new ArgumentNullException(nameof(logContext));
+            _logwrapper = logwrapper ?? throw new ArgumentNullException(nameof(logwrapper));
 
             _logFilesWatcher.OnChangedHandler += OnChanged;
         }
@@ -37,8 +37,7 @@ namespace LogToScreen.Web.Services
                     }
                 }
 
-
-                await _logContext.Clients.All.SendAsync("ReceiveMessage", content);
+                await _logwrapper.SendToClientsAsync(content);
             }
             catch
             {

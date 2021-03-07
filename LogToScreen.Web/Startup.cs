@@ -37,10 +37,14 @@ namespace LogToScreen.Web
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
             services.AddSignalR();
 
+            var pathToMonitor = Configuration["LogService:PathToMonitor"];
+
             services.AddSingleton<ILogFilesWatcher>(service => 
-                new LogFilesWatcher(@"C:\Users\user\Desktop"));
+                new LogFilesWatcher(pathToMonitor));
+            services.AddScoped<ILogHubWrapper>(service => 
+            new LogHubWrapper(service.GetRequiredService<IHubContext<LogHub>>()));
             services.AddScoped<ILogService>(service =>
-                new LogService(service.GetRequiredService<ILogFilesWatcher>(), service.GetRequiredService<IHubContext<LogHub>>()));
+                new LogService(service.GetRequiredService<ILogFilesWatcher>(), service.GetRequiredService<ILogHubWrapper>()));
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

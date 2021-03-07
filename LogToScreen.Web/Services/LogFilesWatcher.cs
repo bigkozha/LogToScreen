@@ -9,41 +9,67 @@ using System.Threading.Tasks;
 
 namespace LogToScreen.Web.Services
 {
-    public class LogFilesWatcher : ILogFilesWatcher
+    public class LogFilesWatcher : ILogFilesWatcher, IDisposable
     {
         public FileSystemEventHandler OnChangedHandler { get; set; }
         private readonly string _pathWithLogs;
-        
+        private bool disposedValue = false;
+        private FileSystemWatcher _watcher;
+
         public LogFilesWatcher(string pathWithLogs)
         {
-            _pathWithLogs = pathWithLogs ?? throw new ArgumentNullException(nameof(pathWithLogs));
-
-            var watcher = new FileSystemWatcher(_pathWithLogs)
-            {
-                NotifyFilter = NotifyFilters.LastAccess
-                                         | NotifyFilters.LastWrite
-                                         | NotifyFilters.Size
-            };
-
-            watcher.Changed += (sender, e) => OnChangedHandler.Invoke(sender, e);
-            watcher.Error += OnError;
-
-            watcher.Filter = "*.txt";
-            watcher.IncludeSubdirectories = false;
-            watcher.EnableRaisingEvents = true;
-
-            watcher.Disposed += (sender, e) =>
-            {
-                throw new Exception("pizdauskas");
-            };
+            _pathWithLogs = Path.GetFullPath(pathWithLogs) ?? throw new ArgumentNullException(nameof(pathWithLogs));
+            InitWatcher();
         }
 
-        private static void OnError(object sender, ErrorEventArgs e)
+        public void Dispose()
+        {
+            Dispose(true);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    _watcher.Error -= OnError;
+                    _watcher.Changed -= OnChangedHandler;
+                    _watcher.Dispose();
+                }
+
+                disposedValue = true;
+            }
+        }
+
+        private void InitWatcher()
+        {
+            _watcher = new FileSystemWatcher(_pathWithLogs)
+            {
+                NotifyFilter = NotifyFilters.LastAccess
+                             | NotifyFilters.LastWrite
+                             | NotifyFilters.Size
+            };
+
+            _watcher.Changed += OnChanged;
+            _watcher.Error += OnError;
+
+            _watcher.Filter = "*.txt";
+            _watcher.IncludeSubdirectories = false;
+            _watcher.EnableRaisingEvents = true;
+        }
+
+        private void OnChanged(object sender, FileSystemEventArgs e)
+        {
+            OnChangedHandler.Invoke(sender, e);
+        }
+
+        private void OnError(object sender, ErrorEventArgs e)
         {
             PrintException(e.GetException());
         }
 
-        private static void PrintException(Exception ex)
+        private void PrintException(Exception ex)
         {
             if (ex != null)
             {
